@@ -38,87 +38,96 @@ namespace OutlookAddIn3GPP
                         {
                             object o = null;
 
+                            // 1 = Disabled
+                            int Disabled = 0;
+                            o = Registry.GetValue(REGKEY, "Disabled", Disabled);
+                            if (o != null)
+                                Disabled = (int)o;
+
                             // 0 = Keep original, 1 = Delete original attachment
                             int Delete = 1;
-                            o = Registry.GetValue(REGKEY, "DeleteOriginal", 1);
+                            o = Registry.GetValue(REGKEY, "DeleteOriginal", Delete);
                             if (o != null)
                                 Delete = (int)o;
 
                             // 0 = No info at all, 1 = Only at Errors, 2 = Always if downloaded content, 99 = Always
                             int Verbose = 1;
-                            o = Registry.GetValue(REGKEY, "Verbose", 1);
+                            o = Registry.GetValue(REGKEY, "Verbose", Verbose);
                             if (o != null)
                                 Verbose = (int)o;
 
                             bool Found = false;
                             bool Err = false;
                             string Msg = "3GPP Attachment replacements, Ver: " + VER + Environment.NewLine;
-                            for (int i = mail.Attachments.Count; i > 0; i--)
+                            if (Disabled == 0)
                             {
-                                Msg += Environment.NewLine + "Attachment# " + i.ToString() + Environment.NewLine;
-                                try
+                                for (int i = mail.Attachments.Count; i > 0; i--)
                                 {
-                                    if ((mail.Attachments[i].FileName != null) &&
-                                        (mail.Attachments[i].FileName.Length > 11) &&
-                                        (mail.Attachments[i].FileName.Substring(0, 11) == "Attachment ") &&
-                                        (mail.Attachments[i].FileName.IndexOf(".txt") > 0))
+                                    Msg += Environment.NewLine + "Attachment# " + i.ToString() + Environment.NewLine;
+                                    try
                                     {
-                                        //                                    string s = mail.Attachments[i].GetTemporaryFilePath();
-                                        string s = System.IO.Path.GetTempPath() + System.IO.Path.GetRandomFileName();
-                                        mail.Attachments[i].SaveAsFile(s);
-                                        string[] lines = System.IO.File.ReadAllLines(s);
-                                        if ((lines != null) && (lines.Length > 3) && (lines.Length < 6) && (lines[0].IndexOf("Attachment:") > -1) && (lines[1].Length > 2) && (lines[3].IndexOf("://list.etsi.org/") > -1))
+                                        if ((mail.Attachments[i].FileName != null) &&
+                                            (mail.Attachments[i].FileName.Length > 11) &&
+                                            (mail.Attachments[i].FileName.Substring(0, 11) == "Attachment ") &&
+                                            (mail.Attachments[i].FileName.IndexOf(".txt") > 0))
                                         {
-                                            Found = true;
-                                            string Name = lines[1].Substring(1, lines[1].Length - 2);
-                                            WebClient W = new WebClient();
-                                            //                                        string s2 = System.IO.Path.GetTempPath() + System.IO.Path.GetRandomFileName();
-                                            Msg += "Name: '" + mail.Attachments[i].FileName + "'" + Environment.NewLine + "Downloading attachment: '" + lines[3] + "', ";
-                                            W.DownloadFile(lines[3], Name);
-                                            long L = new System.IO.FileInfo(Name).Length;
-                                            Msg += "Done" + Environment.NewLine + "Attachment downloded, size: " + L.ToString();
-                                            if ((W.ResponseHeaders != null) && (W.ResponseHeaders["Content-Type"] != null))
-                                                Msg += ", Content-Type: '" + W.ResponseHeaders["Content-Type"] + "'";
-                                            if (Delete == 1)
-                                                Msg += Environment.NewLine + "Replacing the attachment with the downloaded file, ";
-                                            else
-                                                Msg += Environment.NewLine + "Adding attachment with the downloaded file, ";
-                                            mail.Attachments.Add(Name, Outlook.OlAttachmentType.olByValue, 1, Name);
-                                            if (Delete == 1)
-                                                mail.Attachments[i].Delete();
-                                            Msg += "Done" + Environment.NewLine;
-                                            if (Delete == 1)
+                                            //                                    string s = mail.Attachments[i].GetTemporaryFilePath();
+                                            string s = System.IO.Path.GetTempPath() + System.IO.Path.GetRandomFileName();
+                                            mail.Attachments[i].SaveAsFile(s);
+                                            string[] lines = System.IO.File.ReadAllLines(s);
+                                            if ((lines != null) && (lines.Length > 3) && (lines.Length < 6) && (lines[0].IndexOf("Attachment:") > -1) && (lines[1].Length > 2) && (lines[3].IndexOf("://list.etsi.org/") > -1))
                                             {
-                                                Msg += "Content of the original attachment: " + Environment.NewLine;
-                                                for (int j = 0; j < lines.Length; j++)
-                                                    Msg += "\t" + "Line: " + j.ToString() + ": '" + lines[j] + "'" + Environment.NewLine;
+                                                Found = true;
+                                                string Name = lines[1].Substring(1, lines[1].Length - 2);
+                                                WebClient W = new WebClient();
+                                                //                                        string s2 = System.IO.Path.GetTempPath() + System.IO.Path.GetRandomFileName();
+                                                Msg += "Name: '" + mail.Attachments[i].FileName + "'" + Environment.NewLine + "Downloading attachment: '" + lines[3] + "', ";
+                                                W.DownloadFile(lines[3], Name);
+                                                long L = new System.IO.FileInfo(Name).Length;
+                                                Msg += "Done" + Environment.NewLine + "Attachment downloded, size: " + L.ToString();
+                                                if ((W.ResponseHeaders != null) && (W.ResponseHeaders["Content-Type"] != null))
+                                                    Msg += ", Content-Type: '" + W.ResponseHeaders["Content-Type"] + "'";
+                                                if (Delete == 1)
+                                                    Msg += Environment.NewLine + "Replacing the attachment with the downloaded file, ";
+                                                else
+                                                    Msg += Environment.NewLine + "Adding attachment with the downloaded file, ";
+                                                mail.Attachments.Add(Name, Outlook.OlAttachmentType.olByValue, 1, Name);
+                                                if (Delete == 1)
+                                                    mail.Attachments[i].Delete();
+                                                Msg += "Done" + Environment.NewLine;
+                                                if (Delete == 1)
+                                                {
+                                                    Msg += "Content of the original attachment: " + Environment.NewLine;
+                                                    for (int j = 0; j < lines.Length; j++)
+                                                        Msg += "\t" + "Line: " + j.ToString() + ": '" + lines[j] + "'" + Environment.NewLine;
+                                                }
+                                                System.IO.File.Delete(s);
+                                                System.IO.File.Delete(Name);
                                             }
-                                            System.IO.File.Delete(s);
-                                            System.IO.File.Delete(Name);
+                                        }
+                                        else
+                                        {
+                                            Msg += "Attachment ignored (non 3GPP document link)." + Environment.NewLine;
                                         }
                                     }
-                                    else
+                                    catch (Exception Ex)
                                     {
-                                        Msg += "Attachment ignored (non 3GPP document link)." + Environment.NewLine;
+                                        Msg += "Error: '" + Ex.Message + "'" + Environment.NewLine;
+                                        Err = true;
                                     }
                                 }
-                                catch (Exception Ex)
+                                Msg += Environment.NewLine + Environment.NewLine + "------------------------------------------------" + Environment.NewLine + "3GPP Attachment replacement add-in, Svante Alnås" + Environment.NewLine + @"http://www.alnas.com/3GPPAttachment";
+                                if (((Verbose == 1) && Err) || ((Verbose == 2) && Found) || (Verbose == 99))
                                 {
-                                    Msg += "Error: '" + Ex.Message + "'" + Environment.NewLine;
-                                    Err = true;
+                                    try
+                                    {
+                                        string Tmp = System.IO.Path.GetTempPath() + Guid.NewGuid().ToString() + ".txt";
+                                        System.IO.File.WriteAllText(Tmp, Msg);
+                                        mail.Attachments.Add(Tmp, Outlook.OlAttachmentType.olByValue, 1, "3GPPAttachmentAddIn.txt");
+                                        System.IO.File.Delete(Tmp);
+                                    }
+                                    catch (Exception) { }
                                 }
-                            }
-                            Msg += Environment.NewLine + Environment.NewLine + "------------------------------------------------" + Environment.NewLine + "3GPP Attachment replacement add-in, Svante Alnås" + Environment.NewLine + @"http://www.alnas.com/3GPPAttachment";
-                            if (((Verbose == 1) && Err) || ((Verbose == 2) && Found) || (Verbose == 99))
-                            {
-                                try
-                                {
-                                    string Tmp = System.IO.Path.GetTempPath() + Guid.NewGuid().ToString() + ".txt";
-                                    System.IO.File.WriteAllText(Tmp, Msg);
-                                    mail.Attachments.Add(Tmp, Outlook.OlAttachmentType.olByValue, 1, "3GPPAttachmentAddIn.txt");
-                                    System.IO.File.Delete(Tmp);
-                                }
-                                catch (Exception) { }
                             }
                         }
                     }
